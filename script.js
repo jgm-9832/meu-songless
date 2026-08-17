@@ -15,7 +15,7 @@ const spotifyLinkBtn = document.getElementById('spotify-link-btn');
 // 1. CONFIGURAÇÕES PREMIUM E LOGIN
 // ==========================================
 const CLIENT_ID = '471792e60546454cb48cf3b04397b06f';
-const REDIRECT_URI = 'http://127.0.0.1:5500/'; 
+const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; 
 
 function gerarStringAleatoria(tamanho) {
     const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
