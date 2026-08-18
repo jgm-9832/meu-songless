@@ -9,7 +9,7 @@ const btnNextRound = document.getElementById('next-round-btn');
 const vibePlayPauseBtn = document.getElementById('vibe-play-pause-btn');
 const spotifyLinkBtn = document.getElementById('spotify-link-btn');
 
-const CLIENT_ID = 'COLE_O_NOVO_CLIENT_ID_AQUI'; // <-- COLOQUE SEU ID NOVO AQUI
+const CLIENT_ID = 035ea29d325b48a1af909c612380e63f'; // <-- COLOQUE SEU ID NOVO AQUI
 const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; 
 
 // --- AUTENTICAÇÃO COM O SPOTIFY ---
