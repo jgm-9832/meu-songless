@@ -185,7 +185,7 @@ async function carregarMusicas() {
     }
 
     try {
-let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
+let url = 'https://api.spotify.com/v1/playlists/37i9dQZEVXbMXbN3EUUhlg/tracks?limit=50';
         let limiteDePaginas = 40; 
         let paginasBuscadas = 0;
         let musicasBrutas = [];
