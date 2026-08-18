@@ -1,3 +1,11 @@
+// ==========================================
+// 0. LIMPEZA DE CACHE (Destrava o celular)
+// ==========================================
+if (!localStorage.getItem('cache_limpo_v3')) {
+    localStorage.clear();
+    localStorage.setItem('cache_limpo_v3', 'true');
+}
+
 const btnPlay = document.getElementById('play-btn');
 const tempoDisplay = document.getElementById('tempo-display');
 const msgArea = document.getElementById('status-msg');
@@ -6,13 +14,17 @@ const inputChute = document.getElementById('chute');
 const listaPesquisa = document.getElementById('lista-pesquisa');
 const streakDisplay = document.getElementById('streak-display');
 const btnNextRound = document.getElementById('next-round-btn'); 
+
+// 🌟 Os Botões do Mini-Player
 const vibePlayPauseBtn = document.getElementById('vibe-play-pause-btn');
 const spotifyLinkBtn = document.getElementById('spotify-link-btn');
 
-const CLIENT_ID = 035ea29d325b48a1af909c612380e63f'; // <-- COLOQUE SEU ID NOVO AQUI
-const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; 
+// ==========================================
+// 1. CONFIGURAÇÕES PREMIUM E LOGIN
+// ==========================================
+const CLIENT_ID = '471792e60546454cb48cf3b04397b06f'; // SE FOR O ANTIGO, TROQUE PELO NOVO!
+const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; // Ajustado para o GitHub Pages
 
-// --- AUTENTICAÇÃO COM O SPOTIFY ---
 function gerarStringAleatoria(tamanho) {
     const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const valores = crypto.getRandomValues(new Uint8Array(tamanho));
@@ -70,6 +82,7 @@ async function trocarCodigoPorToken() {
             const tempoExpiracao = Date.now() + (dados.expires_in * 1000);
             window.localStorage.setItem('spotify_token', dados.access_token);
             window.localStorage.setItem('spotify_token_exp', tempoExpiracao);
+
             window.history.replaceState({}, document.title, window.location.pathname);
             return dados.access_token;
         }
@@ -77,18 +90,14 @@ async function trocarCodigoPorToken() {
     return null;
 }
 
-// --- VARIÁVEIS DO JOGO ---
+// ==========================================
+// 2. INICIALIZANDO O SPOTIFY VIRTUAL (PC E CELULAR)
+// ==========================================
 let tokenDeAcesso = null;
 let playlistReal = []; 
 let musicaAtual = null; 
 let deviceId = null; 
-let tempos = [1, 2, 4, 7, 11, 16]; 
-let tentativaAtual = 0; 
-let tocando = false; 
-let cronometro; 
-let streakCount = 0; 
 
-// --- INICIALIZAÇÃO INTELIGENTE (PC e Celular) ---
 async function iniciarJogo() {
     const tokenSalvo = window.localStorage.getItem('spotify_token');
     const tokenExp = window.localStorage.getItem('spotify_token_exp');
@@ -104,7 +113,7 @@ async function iniciarJogo() {
     } else {
         msgArea.innerText = "✅ Autenticado! Verificando dispositivo...";
         
-        // Verifica se o usuário está no celular
+        // Verifica se é celular
         const ehCelular = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
         if (ehCelular) {
@@ -116,18 +125,24 @@ async function iniciarJogo() {
             document.body.appendChild(script);
 
             window.onSpotifyWebPlaybackSDKReady = () => {
-                const playerSp = new Spotify.Player({ name: 'Songless Premium', getOAuthToken: cb => { cb(tokenDeAcesso); }, volume: 1.0 });
-                playerSp.addListener('ready', ({ device_id }) => { 
-                    deviceId = device_id; 
+                const playerSp = new Spotify.Player({
+                    name: 'Songless Premium',
+                    getOAuthToken: cb => { cb(tokenDeAcesso); },
+                    volume: 1.0 
+                });
+
+                playerSp.addListener('ready', ({ device_id }) => {
+                    console.log('Player Premium Conectado com Sucesso!');
+                    deviceId = device_id;
                     carregarMusicas(); 
                 });
+
                 playerSp.connect();
             };
         }
     }
 }
 
-// --- FUNÇÃO NOVA: BUSCAR O APP NO CELULAR ---
 async function buscarDispositivosAtivos() {
     try {
         const resposta = await fetch('https://api.spotify.com/v1/me/player/devices', {
@@ -146,14 +161,16 @@ async function buscarDispositivosAtivos() {
     }
 }
 
-// BLOQUEADOR DE SPOILER (MediaSession API)
+// Bloqueador de spoiler no celular
 if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({ title: 'Songless', artist: 'Adivinhe a música', album: 'Modo Jogo', artwork: [] });
     navigator.mediaSession.setActionHandler('play', null);
     navigator.mediaSession.setActionHandler('pause', null);
 }
 
-// --- CARREGAMENTO DE MÚSICAS (À PROVA DE ERRO 429) ---
+// ==========================================
+// 3. PUXANDO SUAS MÚSICAS (COM CACHE E BLINDAGEM 429)
+// ==========================================
 async function carregarMusicas() {
     const cacheKey = 'playlist_songless';
     const cacheTimeKey = 'playlist_time_songless';
@@ -163,118 +180,416 @@ async function carregarMusicas() {
 
     if (cacheSalvo && tempoCache && (Date.now() - tempoCache < sessentaMinutos)) {
         playlistReal = JSON.parse(cacheSalvo);
-        sortearMusica();
-        msgArea.innerText = "🔥 Playlist carregada (cache)!";
-        return;
+        if (playlistReal.length > 0) {
+            sortearMusica();
+            msgArea.innerText = `🔥 Playlist carregada! Aperte Play.`;
+            return;
+        }
     }
 
     try {
-        msgArea.innerText = "Baixando músicas (isso pode levar um tempinho)...";
+        msgArea.innerText = "Lendo seu cofre Premium... (Pode levar um tempinho)";
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
+        let limiteDePaginas = 40; 
+        let paginasBuscadas = 0;
         let musicasBrutas = [];
-        let paginas = 0;
 
-        while (url && paginas < 40) {
-            const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
+        while (url && paginasBuscadas < limiteDePaginas) {
+            const resposta = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }
+            });
             
-            if (resposta.status === 429) {
-                console.log("Limite do Spotify atingido! Salvando as músicas que já pegamos...");
-                break; 
-            }
+            // SE BATER NO LIMITE DO SPOTIFY, PARA E SALVA O QUE TEM
+            if (resposta.status === 429) break; 
             
             const dados = await resposta.json();
-            musicasBrutas = musicasBrutas.concat(dados.items.map(i => i.track).filter(t => t !== null));
-            url = dados.next;
-            paginas++;
+            const todasAsMusicas = dados.items.map(item => item.track).filter(track => track !== null);
+            musicasBrutas = musicasBrutas.concat(todasAsMusicas);
             
+            url = dados.next; 
+            paginasBuscadas++;
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        let mapa = new Map();
-        musicasBrutas.forEach(m => mapa.set(m.id, m));
-        playlistReal = Array.from(mapa.values());
+        let mapaDeMusicas = new Map();
+        musicasBrutas.forEach(m => mapaDeMusicas.set(m.id, m));
+        playlistReal = Array.from(mapaDeMusicas.values());
 
         if (playlistReal.length > 0) {
             localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
             localStorage.setItem(cacheTimeKey, Date.now());
             sortearMusica();
-            msgArea.innerText = `🔥 Pronto! ${playlistReal.length} músicas carregadas!`;
+            msgArea.innerText = `🔥 ${playlistReal.length} músicas carregadas! Aperte Play.`;
         } else {
             msgArea.innerText = "Spotify bloqueado. Tente daqui a pouco.";
         }
-
-    } catch (e) { 
-        msgArea.innerText = "Erro ao carregar músicas."; 
-        console.error(e);
+    } catch (erro) {
+        console.error(erro);
+        msgArea.innerText = "Erro ao carregar músicas da sua conta.";
     }
 }
 
-function sortearMusica() { musicaAtual = playlistReal[Math.floor(Math.random() * playlistReal.length)]; }
-
-// --- CONTROLES DO JOGO ---
-iniciarJogo();
-
-vibePlayPauseBtn.addEventListener('click', async () => {
-    if (tocando) { await pausarMusica(); tocando = false; vibePlayPauseBtn.innerText = "▶️ Tocar"; } 
-    else { try { await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }}); tocando = true; vibePlayPauseBtn.innerText = "⏸️ Pausar"; } catch(e) {} }
-});
-
-async function pausarMusica() { try { await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }}); } catch(e) {} }
-
-function mostrarCapaDaMusica(acertou) {
-    document.getElementById('album-cover').src = musicaAtual.album.images[0]?.url || "";
-    document.getElementById('musica-revelada').innerText = `${musicaAtual.name} - ${musicaAtual.artists[0].name}`;
-    document.getElementById('musica-revelada').style.color = acertou ? "#1DB954" : "red";
-    spotifyLinkBtn.href = musicaAtual.external_urls.spotify;
-    document.querySelector('.player-area').style.display = 'none';
-    document.querySelector('.search-area').style.display = 'none';
-    document.getElementById('album-cover-area').style.display = 'block';
+function sortearMusica() {
+    if (playlistReal.length > 0) {
+        let indiceSorteado = Math.floor(Math.random() * playlistReal.length);
+        musicaAtual = playlistReal[indiceSorteado];
+        console.log("🤫 A resposta correta é: ", musicaAtual.name); 
+    }
 }
 
-btnNextRound.addEventListener('click', async () => {
+iniciarJogo();
+
+// ==========================================
+// 4. LÓGICA DO JOGO E MINI-PLAYER
+// ==========================================
+let tempos = [1, 2, 4, 7, 11, 16]; 
+let tentativaAtual = 0; 
+let tocando = false; 
+let jogoFinalizado = false; 
+let cronometro; 
+let streakCount = 0; 
+
+vibePlayPauseBtn.addEventListener('click', async () => {
+    if (tocando) {
+        await pausarMusica();
+        tocando = false;
+        vibePlayPauseBtn.innerText = "▶️ Tocar";
+    } else {
+        try {
+            await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }
+            });
+            tocando = true;
+            vibePlayPauseBtn.innerText = "⏸️ Pausar";
+        } catch(e) {}
+    }
+});
+
+function atualizarStreak(ganhou) {
+    if (ganhou) {
+        streakCount++;
+        streakDisplay.style.color = '#1DB954'; 
+    } else {
+        streakCount = 0;
+        streakDisplay.style.color = 'red'; 
+    }
+    streakDisplay.innerText = `🔥 Sequência: ${streakCount}`;
+    setTimeout(() => { streakDisplay.style.color = '#ff9800'; }, 1500);
+}
+
+function travarBotaoPlay(travar) {
+    if (travar) {
+        btnPlay.disabled = true;
+        btnPlay.style.opacity = '0.5';
+        btnPlay.style.cursor = 'not-allowed';
+    } else {
+        btnPlay.disabled = false;
+        btnPlay.style.opacity = '1';
+        btnPlay.style.cursor = 'pointer';
+    }
+}
+
+async function pausarMusica() {
+    try {
+        await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }
+        });
+    } catch(e) {}
+}
+
+function mostrarCapaDaMusica(acertou) {
+    const albumArea = document.getElementById('album-cover-area');
+    const albumImg = document.getElementById('album-cover');
+    const tituloRevealed = document.getElementById('musica-revelada');
+
+    if (musicaAtual.album.images && musicaAtual.album.images.length > 0) {
+        albumImg.src = musicaAtual.album.images[0].url; 
+    } else {
+        albumImg.src = "https://developer.spotify.com/images/guidelines/design/icon3@2x.png";
+    }
+
+    tituloRevealed.innerText = `${musicaAtual.name} - ${musicaAtual.artists[0].name}`;
+    tituloRevealed.style.color = acertou ? "#1DB954" : "red";
+
+    if (musicaAtual.external_urls && musicaAtual.external_urls.spotify) {
+        spotifyLinkBtn.href = musicaAtual.external_urls.spotify;
+        spotifyLinkBtn.style.display = 'inline-flex';
+    } else {
+        spotifyLinkBtn.style.display = 'none';
+    }
+    
+    vibePlayPauseBtn.innerText = "⏸️ Pausar";
+    document.querySelector('.player-area').style.display = 'none';
+    document.querySelector('.search-area').style.display = 'none';
+    albumArea.style.display = 'block';
+}
+
+async function proximaRodada() {
+    clearTimeout(cronometro);
     if (tocando) await pausarMusica();
+    
     sortearMusica();
-    tentativaAtual = 0; tocando = false;
+    tentativaAtual = 0;
+    jogoFinalizado = false;
+    tocando = false;
+    travarBotaoPlay(false);
+    
     document.getElementById('album-cover-area').style.display = 'none';
     document.querySelector('.player-area').style.display = 'flex';
     document.querySelector('.search-area').style.display = 'flex';
+    
     tempoDisplay.innerText = tempos[0] + "s";
-});
+    inputChute.value = "";
+    
+    for(let i = 0; i <= 5; i++) {
+        document.getElementById('box-' + i).style.backgroundColor = '#535353';
+    }
+    
+    msgArea.innerText = "Nova rodada! Aperte Play.";
+    msgArea.style.color = "#b3b3b3";
+}
+
+btnNextRound.addEventListener('click', proximaRodada);
+
+async function avancaTentativa(motivo) {
+    if (jogoFinalizado) return;
+
+    if (tocando) {
+        clearTimeout(cronometro);
+        await pausarMusica();
+        tocando = false;
+        travarBotaoPlay(false);
+    }
+
+    if (tentativaAtual < 5) {
+        tentativaAtual++;
+        tempoDisplay.innerText = tempos[tentativaAtual] + "s";
+        msgArea.innerText = `${motivo} Tempo aumentado para ${tempos[tentativaAtual]}s!`;
+        msgArea.style.color = "#b3b3b3";
+    } else {
+        msgArea.innerText = `❌ Fim de jogo!`;
+        jogoFinalizado = true;
+        
+        atualizarStreak(false); 
+        mostrarCapaDaMusica(false); 
+
+        try {
+            await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + tokenDeAcesso, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uris: [musicaAtual.uri], position_ms: 0 })
+            });
+            tocando = true;
+        } catch(e) {}
+    }
+}
 
 btnPlay.addEventListener('click', async () => {
-    if (!deviceId || tocando) return;
+    if (!tokenDeAcesso || !deviceId) {
+        alert("Aguarde o Player se conectar!");
+        return;
+    }
+    if (playlistReal.length === 0 || jogoFinalizado) return;
+    if (btnPlay.disabled || tocando) return; 
+
+    let tempoLimite = tempos[tentativaAtual];
+    let tentativaAoDarPlay = tentativaAtual;
+    
     tocando = true;
+    travarBotaoPlay(true); 
+    
+    document.getElementById('box-' + tentativaAtual).style.backgroundColor = '#1DB954';
+    tempoDisplay.innerText = tempoLimite + "s";
+    msgArea.innerText = "Tocando..."; 
+    msgArea.style.color = "#b3b3b3"; 
+
     try {
         await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
             method: 'PUT',
-            headers: { 'Authorization': 'Bearer ' + tokenDeAcesso, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uris: [musicaAtual.uri], position_ms: 0 })
+            headers: {
+                'Authorization': 'Bearer ' + tokenDeAcesso,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                uris: [musicaAtual.uri],
+                position_ms: 0 
+            })
         });
-        cronometro = setTimeout(async () => { await pausarMusica(); tocando = false; }, (tempos[tentativaAtual] * 1000) + 450);
-    } catch(e) { tocando = false; }
+        
+        if (!tocando || tentativaAtual !== tentativaAoDarPlay) {
+            await pausarMusica();
+            travarBotaoPlay(false);
+            return;
+        }
+        
+        const LATENCIA_REDE = 450; 
+
+        cronometro = setTimeout(async () => {
+            await pausarMusica();
+            setTimeout(pausarMusica, 250); 
+
+            if (!jogoFinalizado) {
+                msgArea.innerText = "Tempo esgotado! Tente adivinhar ou pule.";
+            }
+            tocando = false; 
+            travarBotaoPlay(false); 
+        }, (tempoLimite * 1000) + LATENCIA_REDE);
+
+    } catch(erro) { 
+        console.error("Erro no play:", erro); 
+        tocando = false;
+        travarBotaoPlay(false); 
+    }
 });
 
+btnSkip.addEventListener('click', () => {
+    if (jogoFinalizado) return;
+    avancaTentativa("Você pulou.");
+});
+
+// ==========================================
+// 5. CAIXA DE PESQUISA E CONFETES
+// ==========================================
 inputChute.addEventListener('input', () => {
-    let filtradas = playlistReal.filter(m => m.name.toLowerCase().includes(inputChute.value.toLowerCase()));
-    listaPesquisa.innerHTML = '';
-    filtradas.slice(0, 5).forEach(m => {
-        let li = document.createElement('li');
-        li.innerText = m.name;
-        li.onclick = async () => {
-            if(m.id === musicaAtual.id) {
-                clearTimeout(cronometro);
-                msgArea.innerText = "🎉 ACERTOU!";
-                streakCount++;
-                streakDisplay.innerText = `🔥 Sequência: ${streakCount}`;
-                mostrarCapaDaMusica(true);
-                if (typeof confetti === "function") confetti({ particleCount: 150 });
-            } else {
-                tentativaAtual++;
-                msgArea.innerText = "Errado!";
-            }
-            listaPesquisa.style.display = 'none';
-        };
-        listaPesquisa.appendChild(li);
+    let digitado = inputChute.value.toLowerCase(); 
+    listaPesquisa.innerHTML = ''; 
+    
+    if (digitado.length === 0 || jogoFinalizado) {
+        listaPesquisa.style.display = 'none';
+        return;
+    }
+
+    let filtradas = playlistReal.filter(musica => 
+        musica.name.toLowerCase().includes(digitado) || 
+        musica.artists[0].name.toLowerCase().includes(digitado)
+    );
+
+    let musicasUnicas = [];
+    let idsVistos = new Set();
+    for (let m of filtradas) {
+        if (!idsVistos.has(m.id)) {
+            idsVistos.add(m.id);
+            musicasUnicas.push(m);
+        }
+    }
+
+    if (musicasUnicas.length > 0) {
+        listaPesquisa.style.display = 'block';
+        
+        musicasUnicas.slice(0, 15).forEach(musica => { 
+            let item = document.createElement('li');
+            item.innerHTML = `${musica.name} <span>${musica.artists[0].name}</span>`;
+            
+            item.addEventListener('click', async () => {
+                inputChute.value = musica.name; 
+                listaPesquisa.style.display = 'none'; 
+                
+                if(musica.id === musicaAtual.id) {
+                    if (tocando) {
+                        clearTimeout(cronometro);
+                        travarBotaoPlay(false);
+                    } else {
+                        try {
+                            await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+                                method: 'PUT',
+                                headers: { 'Authorization': 'Bearer ' + tokenDeAcesso, 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ uris: [musicaAtual.uri], position_ms: 0 })
+                            });
+                            tocando = true;
+                        } catch(e) {}
+                    }
+                    
+                    msgArea.innerText = "🎉 VOCÊ ACERTOU!!!";
+                    jogoFinalizado = true;
+                    
+                    atualizarStreak(true); 
+                    mostrarCapaDaMusica(true); 
+
+                    if (typeof confetti === "function") {
+                        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
+                    }
+
+                } else {
+                    avancaTentativa("Música errada!");
+                }
+            });
+            
+            listaPesquisa.appendChild(item); 
+        });
+    } else {
+        listaPesquisa.style.display = 'none';
+    }
+});
+
+// ==========================================
+// 6. FILTROS E DIFICULDADES
+// ==========================================
+const botoesCategoria = document.querySelectorAll('.cat-btn');
+const botoesDificuldade = document.querySelectorAll('.diff-btn');
+
+botoesCategoria.forEach(botao => {
+    botao.addEventListener('click', () => {
+        botoesCategoria.forEach(b => b.classList.remove('active'));
+        botao.classList.add('active');
+        msgArea.innerText = `Filtro alterado para: ${botao.innerText}`;
     });
-    listaPesquisa.style.display = filtradas.length > 0 ? 'block' : 'none';
+});
+
+const temposPorDificuldade = {
+    'Easy': [2, 4, 7, 11, 16, 25],
+    'Medium': [1, 2, 4, 7, 11, 16],
+    'Hard': [0.5, 1, 2, 4, 7, 10],
+    'Expert': [0.2, 0.5, 1, 2, 4, 6],
+    'Impossible': [0.1, 0.3, 0.5, 1, 2, 3]
+};
+
+botoesDificuldade.forEach(botao => {
+    botao.addEventListener('click', async () => {
+        botoesDificuldade.forEach(b => {
+            b.style.backgroundColor = '#282828';
+            b.style.color = '#b3b3b3';
+            if(b.classList.contains('impossible')) {
+                b.style.backgroundColor = 'transparent';
+                b.style.color = '#9c27b0';
+            }
+        });
+
+        if(botao.classList.contains('impossible')) {
+            botao.style.backgroundColor = '#9c27b0';
+            botao.style.color = 'white';
+        } else {
+            botao.style.backgroundColor = '#1DB954';
+            botao.style.color = '#121212';
+        }
+
+        let nomeDificuldade = botao.innerText;
+        tempos = temposPorDificuldade[nomeDificuldade]; 
+
+        tentativaAtual = 0;
+        jogoFinalizado = false;
+        inputChute.value = "";
+        
+        document.getElementById('album-cover-area').style.display = 'none';
+        document.querySelector('.player-area').style.display = 'flex';
+        document.querySelector('.search-area').style.display = 'flex';
+
+        tempoDisplay.innerText = tempos[0] + "s";
+        
+        if (tocando) {
+            clearTimeout(cronometro);
+            await pausarMusica();
+            tocando = false;
+            travarBotaoPlay(false);
+        }
+        
+        for(let i = 0; i <= 5; i++) {
+            let box = document.getElementById('box-' + i);
+            if (box) box.style.backgroundColor = '#535353';
+        }
+
+        msgArea.innerText = `Dificuldade alterada para ${nomeDificuldade}! Aperte Play.`;
+        msgArea.style.color = "#b3b3b3";
+    });
 });
