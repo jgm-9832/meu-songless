@@ -119,16 +119,16 @@ if ('mediaSession' in navigator) {
     navigator.mediaSession.setActionHandler('pause', null);
 }
 
-// 4. CARREGAR MÚSICAS COM CACHE (30 MIN)
+// 4.// 4. CARREGAR TODAS AS MÚSICAS COM CACHE DE 60 MINUTOS
 async function carregarMusicas() {
     const cacheKey = 'playlist_songless';
     const cacheTimeKey = 'playlist_time_songless';
-    const umaHora = 60 * 60 * 1000; // 1 hora de cache para testes
+    const sessentaMinutos = 60 * 60 * 1000; // 1 hora de cache
     const cacheSalvo = localStorage.getItem(cacheKey);
     const tempoCache = localStorage.getItem(cacheTimeKey);
 
-    // Se tiver cache recente, usa ele
-    if (cacheSalvo && tempoCache && (Date.now() - tempoCache < umaHora)) {
+    // Se o cache ainda estiver válido (menos de 1 hora), usa ele direto
+    if (cacheSalvo && tempoCache && (Date.now() - tempoCache < sessentaMinutos)) {
         playlistReal = JSON.parse(cacheSalvo);
         sortearMusica();
         msgArea.innerText = "🔥 Playlist carregada (cache)!";
@@ -136,44 +136,45 @@ async function carregarMusicas() {
     }
 
     try {
-        msgArea.innerText = "Baixando músicas do Spotify...";
-        
-        // Pede APENAS a primeira página (50 músicas) para evitar qualquer erro 429
+        msgArea.innerText = "Baixando sua biblioteca inteira...";
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
-        
-        const resposta = await fetch(url, { 
-            headers: { 'Authorization': 'Bearer ' + tokenDeAcesso } 
-        });
+        let musicasBrutas = [];
+        let paginas = 0;
 
-        if (resposta.status === 429) {
-            msgArea.innerText = "Spotify ainda bloqueou. Tente logar com outra conta.";
-            return;
+        // Loop seguro para puxar até 40 páginas (2000 músicas) com uma pausa leve entre elas
+        while (url && paginas < 40) {
+            const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
+            
+            if (resposta.status === 429) {
+                throw new Error("429");
+            }
+            
+            const dados = await resposta.json();
+            musicasBrutas = musicasBrutas.concat(dados.items.map(i => i.track).filter(t => t !== null));
+            url = dados.next;
+            paginas++;
+            
+            // Pequena pausa de 300ms entre as páginas para o Spotify processar numa boa
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
 
-        if (!resposta.ok) {
-            throw new Error("Erro na API do Spotify");
-        }
-
-        const dados = await resposta.json();
-        const musicasBrutas = dados.items.map(i => i.track).filter(t => t !== null);
-
-        // Remove duplicatas
+        // Remove músicas duplicadas
         let mapa = new Map();
         musicasBrutas.forEach(m => mapa.set(m.id, m));
         playlistReal = Array.from(mapa.values());
 
-        // Salva no cache
+        // Salva no cache do navegador por 1 hora
         localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
         localStorage.setItem(cacheTimeKey, Date.now());
 
         sortearMusica();
-        msgArea.innerText = "🔥 Pronto para jogar!";
+        msgArea.innerText = `🔥 Pronto! ${playlistReal.length} músicas carregadas!`;
     } catch (e) { 
+        msgArea.innerText = e.message === "429" ? "Spotify ocupado! Aguarde um pouco." : "Erro ao carregar músicas."; 
         console.error(e);
-        msgArea.innerText = "Erro ao carregar as músicas."; 
     }
 }
-      
+        
 
 function sortearMusica() { musicaAtual = playlistReal[Math.floor(Math.random() * playlistReal.length)]; }
 
