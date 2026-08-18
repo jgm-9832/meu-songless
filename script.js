@@ -112,30 +112,59 @@ async function iniciarJogo() {
     }
 }
 
+// 7. BLOQUEADOR DE SPOILER (MediaSession API)
+if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: 'Songless', artist: 'Adivinhe a música', album: 'Modo Jogo', artwork: [] });
+    navigator.mediaSession.setActionHandler('play', null);
+    navigator.mediaSession.setActionHandler('pause', null);
+}
+
+// 4. CARREGAR MÚSICAS COM CACHE (30 MIN)
 async function carregarMusicas() {
+    const cacheKey = 'playlist_songless';
+    const cacheTimeKey = 'playlist_time_songless';
+    const trintaMinutos = 30 * 60 * 1000;
+    const cacheSalvo = localStorage.getItem(cacheKey);
+    const tempoCache = localStorage.getItem(cacheTimeKey);
+
+    if (cacheSalvo && tempoCache && (Date.now() - tempoCache < trintaMinutos)) {
+        playlistReal = JSON.parse(cacheSalvo);
+        sortearMusica();
+        msgArea.innerText = "🔥 Playlist carregada (cache)!";
+        return;
+    }
+
     try {
+        msgArea.innerText = "Baixando playlist nova...";
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
         let musicasBrutas = [];
         let paginas = 0;
 
-        while (url && paginas < 40) {
+        while (url && paginas < 5) {
             const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
+            if (resposta.status === 429) throw new Error("429");
             const dados = await resposta.json();
             musicasBrutas = musicasBrutas.concat(dados.items.map(i => i.track).filter(t => t !== null));
             url = dados.next;
             paginas++;
+            await new Promise(resolve => setTimeout(resolve, 500));
         }
+
         let mapa = new Map();
         musicasBrutas.forEach(m => mapa.set(m.id, m));
         playlistReal = Array.from(mapa.values());
+
+        localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
+        localStorage.setItem(cacheTimeKey, Date.now());
+
         sortearMusica();
         msgArea.innerText = "🔥 Pronto para jogar!";
-    } catch (e) { msgArea.innerText = "Erro ao carregar músicas."; }
+    } catch (e) { 
+        msgArea.innerText = e.message === "429" ? "Spotify ocupado! Aguarde." : "Erro ao carregar."; 
+    }
 }
 
-function sortearMusica() {
-    musicaAtual = playlistReal[Math.floor(Math.random() * playlistReal.length)];
-}
+function sortearMusica() { musicaAtual = playlistReal[Math.floor(Math.random() * playlistReal.length)]; }
 
 iniciarJogo();
 
@@ -190,6 +219,7 @@ inputChute.addEventListener('input', () => {
                 clearTimeout(cronometro);
                 msgArea.innerText = "🎉 ACERTOU!";
                 streakCount++;
+                streakDisplay.innerText = `🔥 Sequência: ${streakCount}`;
                 mostrarCapaDaMusica(true);
                 confetti({ particleCount: 150 });
             } else {
