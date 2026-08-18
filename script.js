@@ -9,7 +9,7 @@ const btnNextRound = document.getElementById('next-round-btn');
 const vibePlayPauseBtn = document.getElementById('vibe-play-pause-btn');
 const spotifyLinkBtn = document.getElementById('spotify-link-btn');
 
-const CLIENT_ID = '035ea29d325b48a1af909c612380e63f'; // <-- COLOQUE SEU ID NOVO AQUI
+const CLIENT_ID = 'COLE_O_NOVO_CLIENT_ID_AQUI'; // <-- COLOQUE SEU ID NOVO AQUI
 const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; 
 
 // --- AUTENTICAÇÃO COM O SPOTIFY ---
@@ -88,7 +88,7 @@ let tocando = false;
 let cronometro; 
 let streakCount = 0; 
 
-// --- INICIALIZAÇÃO ---
+// --- INICIALIZAÇÃO INTELIGENTE (PC e Celular) ---
 async function iniciarJogo() {
     const tokenSalvo = window.localStorage.getItem('spotify_token');
     const tokenExp = window.localStorage.getItem('spotify_token_exp');
@@ -102,16 +102,47 @@ async function iniciarJogo() {
     if (!tokenDeAcesso) {
         msgArea.innerHTML = `<button onclick="fazerLoginSpotify()" style="background-color: #1DB954; color: #121212; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer;">🟢 Conectar com o Spotify</button>`;
     } else {
-        msgArea.innerText = "✅ Autenticado! Ligando o motor...";
-        const script = document.createElement("script");
-        script.src = "https://sdk.scdn.co/spotify-player.js";
-        document.body.appendChild(script);
+        msgArea.innerText = "✅ Autenticado! Verificando dispositivo...";
+        
+        // Verifica se o usuário está no celular
+        const ehCelular = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-        window.onSpotifyWebPlaybackSDKReady = () => {
-            const playerSp = new Spotify.Player({ name: 'Songless Premium', getOAuthToken: cb => { cb(tokenDeAcesso); }, volume: 1.0 });
-            playerSp.addListener('ready', ({ device_id }) => { deviceId = device_id; carregarMusicas(); });
-            playerSp.connect();
-        };
+        if (ehCelular) {
+            msgArea.innerText = "Procurando seu App do Spotify...";
+            buscarDispositivosAtivos();
+        } else {
+            const script = document.createElement("script");
+            script.src = "https://sdk.scdn.co/spotify-player.js";
+            document.body.appendChild(script);
+
+            window.onSpotifyWebPlaybackSDKReady = () => {
+                const playerSp = new Spotify.Player({ name: 'Songless Premium', getOAuthToken: cb => { cb(tokenDeAcesso); }, volume: 1.0 });
+                playerSp.addListener('ready', ({ device_id }) => { 
+                    deviceId = device_id; 
+                    carregarMusicas(); 
+                });
+                playerSp.connect();
+            };
+        }
+    }
+}
+
+// --- FUNÇÃO NOVA: BUSCAR O APP NO CELULAR ---
+async function buscarDispositivosAtivos() {
+    try {
+        const resposta = await fetch('https://api.spotify.com/v1/me/player/devices', {
+            headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }
+        });
+        const dados = await resposta.json();
+        
+        if (dados.devices && dados.devices.length > 0) {
+            deviceId = dados.devices[0].id;
+            carregarMusicas();
+        } else {
+            msgArea.innerHTML = `⚠️ Abra o app do Spotify, dê play e pause numa música, e depois <button onclick="buscarDispositivosAtivos()" style="background-color: #1DB954; color: #121212; border: none; padding: 5px 10px; border-radius: 10px; cursor: pointer;">Clique Aqui</button>`;
+        }
+    } catch (e) {
+        msgArea.innerText = "Erro ao buscar dispositivos.";
     }
 }
 
@@ -146,7 +177,6 @@ async function carregarMusicas() {
         while (url && paginas < 40) {
             const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
             
-            // SE BATER NO LIMITE, PARA DE PEDIR E SALVA O QUE JÁ TEM
             if (resposta.status === 429) {
                 console.log("Limite do Spotify atingido! Salvando as músicas que já pegamos...");
                 break; 
@@ -157,7 +187,6 @@ async function carregarMusicas() {
             url = dados.next;
             paginas++;
             
-            // Pausa de 1 segundo (1000ms) entre as páginas
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
@@ -238,7 +267,7 @@ inputChute.addEventListener('input', () => {
                 streakCount++;
                 streakDisplay.innerText = `🔥 Sequência: ${streakCount}`;
                 mostrarCapaDaMusica(true);
-                confetti({ particleCount: 150 });
+                if (typeof confetti === "function") confetti({ particleCount: 150 });
             } else {
                 tentativaAtual++;
                 msgArea.innerText = "Errado!";
