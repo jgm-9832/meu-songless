@@ -9,9 +9,10 @@ const btnNextRound = document.getElementById('next-round-btn');
 const vibePlayPauseBtn = document.getElementById('vibe-play-pause-btn');
 const spotifyLinkBtn = document.getElementById('spotify-link-btn');
 
-const CLIENT_ID = '035ea29d325b48a1af909c612380e63f';
+const CLIENT_ID = '035ea29d325b48a1af909c612380e63f'; // <-- COLOQUE SEU ID NOVO AQUI
 const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; 
 
+// --- AUTENTICAÇÃO COM O SPOTIFY ---
 function gerarStringAleatoria(tamanho) {
     const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const valores = crypto.getRandomValues(new Uint8Array(tamanho));
@@ -76,6 +77,7 @@ async function trocarCodigoPorToken() {
     return null;
 }
 
+// --- VARIÁVEIS DO JOGO ---
 let tokenDeAcesso = null;
 let playlistReal = []; 
 let musicaAtual = null; 
@@ -86,6 +88,7 @@ let tocando = false;
 let cronometro; 
 let streakCount = 0; 
 
+// --- INICIALIZAÇÃO ---
 async function iniciarJogo() {
     const tokenSalvo = window.localStorage.getItem('spotify_token');
     const tokenExp = window.localStorage.getItem('spotify_token_exp');
@@ -112,22 +115,21 @@ async function iniciarJogo() {
     }
 }
 
-// 7. BLOQUEADOR DE SPOILER (MediaSession API)
+// BLOQUEADOR DE SPOILER (MediaSession API)
 if ('mediaSession' in navigator) {
     navigator.mediaSession.metadata = new MediaMetadata({ title: 'Songless', artist: 'Adivinhe a música', album: 'Modo Jogo', artwork: [] });
     navigator.mediaSession.setActionHandler('play', null);
     navigator.mediaSession.setActionHandler('pause', null);
 }
 
-// 4.// 4. CARREGAR TODAS AS MÚSICAS COM CACHE DE 60 MINUTOS
+// --- CARREGAMENTO DE MÚSICAS (À PROVA DE ERRO 429) ---
 async function carregarMusicas() {
     const cacheKey = 'playlist_songless';
     const cacheTimeKey = 'playlist_time_songless';
-    const sessentaMinutos = 60 * 60 * 1000; // 1 hora de cache
+    const sessentaMinutos = 60 * 60 * 1000; 
     const cacheSalvo = localStorage.getItem(cacheKey);
     const tempoCache = localStorage.getItem(cacheTimeKey);
 
-    // Se o cache ainda estiver válido (menos de 1 hora), usa ele direto
     if (cacheSalvo && tempoCache && (Date.now() - tempoCache < sessentaMinutos)) {
         playlistReal = JSON.parse(cacheSalvo);
         sortearMusica();
@@ -136,17 +138,18 @@ async function carregarMusicas() {
     }
 
     try {
-        msgArea.innerText = "Baixando sua biblioteca inteira...";
+        msgArea.innerText = "Baixando músicas (isso pode levar um tempinho)...";
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
         let musicasBrutas = [];
         let paginas = 0;
 
-        // Loop seguro para puxar até 40 páginas (2000 músicas) com uma pausa leve entre elas
         while (url && paginas < 40) {
             const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
             
+            // SE BATER NO LIMITE, PARA DE PEDIR E SALVA O QUE JÁ TEM
             if (resposta.status === 429) {
-                throw new Error("429");
+                console.log("Limite do Spotify atingido! Salvando as músicas que já pegamos...");
+                break; 
             }
             
             const dados = await resposta.json();
@@ -154,30 +157,32 @@ async function carregarMusicas() {
             url = dados.next;
             paginas++;
             
-            // Pequena pausa de 300ms entre as páginas para o Spotify processar numa boa
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Pausa de 1 segundo (1000ms) entre as páginas
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // Remove músicas duplicadas
         let mapa = new Map();
         musicasBrutas.forEach(m => mapa.set(m.id, m));
         playlistReal = Array.from(mapa.values());
 
-        // Salva no cache do navegador por 1 hora
-        localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
-        localStorage.setItem(cacheTimeKey, Date.now());
+        if (playlistReal.length > 0) {
+            localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
+            localStorage.setItem(cacheTimeKey, Date.now());
+            sortearMusica();
+            msgArea.innerText = `🔥 Pronto! ${playlistReal.length} músicas carregadas!`;
+        } else {
+            msgArea.innerText = "Spotify bloqueado. Tente daqui a pouco.";
+        }
 
-        sortearMusica();
-        msgArea.innerText = `🔥 Pronto! ${playlistReal.length} músicas carregadas!`;
     } catch (e) { 
-        msgArea.innerText = e.message === "429" ? "Spotify ocupado! Aguarde um pouco." : "Erro ao carregar músicas."; 
+        msgArea.innerText = "Erro ao carregar músicas."; 
         console.error(e);
     }
 }
-        
 
 function sortearMusica() { musicaAtual = playlistReal[Math.floor(Math.random() * playlistReal.length)]; }
 
+// --- CONTROLES DO JOGO ---
 iniciarJogo();
 
 vibePlayPauseBtn.addEventListener('click', async () => {
