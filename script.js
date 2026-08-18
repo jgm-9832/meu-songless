@@ -161,13 +161,6 @@ async function buscarDispositivosAtivos() {
     }
 }
 
-// Bloqueador de spoiler no celular
-if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: 'Songless', artist: 'Adivinhe a música', album: 'Modo Jogo', artwork: [] });
-    navigator.mediaSession.setActionHandler('play', null);
-    navigator.mediaSession.setActionHandler('pause', null);
-}
-
 // ==========================================
 // 3. PUXANDO SUAS MÚSICAS (COM CACHE E BLINDAGEM 429)
 // ==========================================
