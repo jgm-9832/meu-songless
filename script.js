@@ -123,11 +123,12 @@ if ('mediaSession' in navigator) {
 async function carregarMusicas() {
     const cacheKey = 'playlist_songless';
     const cacheTimeKey = 'playlist_time_songless';
-    const trintaMinutos = 30 * 60 * 1000;
+    const umaHora = 60 * 60 * 1000; // 1 hora de cache para testes
     const cacheSalvo = localStorage.getItem(cacheKey);
     const tempoCache = localStorage.getItem(cacheTimeKey);
 
-    if (cacheSalvo && tempoCache && (Date.now() - tempoCache < trintaMinutos)) {
+    // Se tiver cache recente, usa ele
+    if (cacheSalvo && tempoCache && (Date.now() - tempoCache < umaHora)) {
         playlistReal = JSON.parse(cacheSalvo);
         sortearMusica();
         msgArea.innerText = "🔥 Playlist carregada (cache)!";
@@ -135,34 +136,44 @@ async function carregarMusicas() {
     }
 
     try {
-        msgArea.innerText = "Baixando playlist nova...";
+        msgArea.innerText = "Baixando músicas do Spotify...";
+        
+        // Pede APENAS a primeira página (50 músicas) para evitar qualquer erro 429
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
-        let musicasBrutas = [];
-        let paginas = 0;
+        
+        const resposta = await fetch(url, { 
+            headers: { 'Authorization': 'Bearer ' + tokenDeAcesso } 
+        });
 
-        while (url && paginas < 5) {
-            const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
-            if (resposta.status === 429) throw new Error("429");
-            const dados = await resposta.json();
-            musicasBrutas = musicasBrutas.concat(dados.items.map(i => i.track).filter(t => t !== null));
-            url = dados.next;
-            paginas++;
-            await new Promise(resolve => setTimeout(resolve, 500));
+        if (resposta.status === 429) {
+            msgArea.innerText = "Spotify ainda bloqueou. Tente logar com outra conta.";
+            return;
         }
 
+        if (!resposta.ok) {
+            throw new Error("Erro na API do Spotify");
+        }
+
+        const dados = await resposta.json();
+        const musicasBrutas = dados.items.map(i => i.track).filter(t => t !== null);
+
+        // Remove duplicatas
         let mapa = new Map();
         musicasBrutas.forEach(m => mapa.set(m.id, m));
         playlistReal = Array.from(mapa.values());
 
+        // Salva no cache
         localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
         localStorage.setItem(cacheTimeKey, Date.now());
 
         sortearMusica();
         msgArea.innerText = "🔥 Pronto para jogar!";
     } catch (e) { 
-        msgArea.innerText = e.message === "429" ? "Spotify ocupado! Aguarde." : "Erro ao carregar."; 
+        console.error(e);
+        msgArea.innerText = "Erro ao carregar as músicas."; 
     }
 }
+      
 
 function sortearMusica() { musicaAtual = playlistReal[Math.floor(Math.random() * playlistReal.length)]; }
 
