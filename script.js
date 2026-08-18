@@ -22,7 +22,7 @@ const spotifyLinkBtn = document.getElementById('spotify-link-btn');
 // ==========================================
 // 1. CONFIGURAÇÕES PREMIUM E LOGIN
 // ==========================================
-const CLIENT_ID = '471792e60546454cb48cf3b04397b06f'; // SE FOR O ANTIGO, TROQUE PELO NOVO!
+const CLIENT_ID = '035ea29d325b48a1af909c612380e63f'; // SE FOR O ANTIGO, TROQUE PELO NOVO!
 const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; // Ajustado para o GitHub Pages
 
 function gerarStringAleatoria(tamanho) {
