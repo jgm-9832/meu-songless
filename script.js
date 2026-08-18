@@ -1,9 +1,9 @@
 // ==========================================
-// 0. LIMPEZA DE CACHE (Destrava o celular)
+// 0. LIMPEZA DE CACHE
 // ==========================================
-if (!localStorage.getItem('cache_limpo_v3')) {
+if (!localStorage.getItem('cache_limpo_v4')) {
     localStorage.clear();
-    localStorage.setItem('cache_limpo_v3', 'true');
+    localStorage.setItem('cache_limpo_v4', 'true');
 }
 
 const btnPlay = document.getElementById('play-btn');
@@ -14,17 +14,16 @@ const inputChute = document.getElementById('chute');
 const listaPesquisa = document.getElementById('lista-pesquisa');
 const streakDisplay = document.getElementById('streak-display');
 const btnNextRound = document.getElementById('next-round-btn'); 
-
-// 🌟 Os Botões do Mini-Player
 const vibePlayPauseBtn = document.getElementById('vibe-play-pause-btn');
 const spotifyLinkBtn = document.getElementById('spotify-link-btn');
 
-// ==========================================
-// 1. CONFIGURAÇÕES PREMIUM E LOGIN
-// ==========================================
-const CLIENT_ID = '035ea29d325b48a1af909c612380e63f'; // SE FOR O ANTIGO, TROQUE PELO NOVO!
-const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; // Ajustado para o GitHub Pages
+// COLOQUE SEU CLIENT ID AQUI!
+const CLIENT_ID = '035ea29d325b48a1af909c612380e63f'; 
+const REDIRECT_URI = 'https://jgm-9832.github.io/meu-songless/'; 
 
+// ==========================================
+// 1. LOGIN
+// ==========================================
 function gerarStringAleatoria(tamanho) {
     const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const valores = crypto.getRandomValues(new Uint8Array(tamanho));
@@ -34,10 +33,7 @@ function gerarStringAleatoria(tamanho) {
 async function gerarDesafio(codigoVerificador) {
     const dados = new TextEncoder().encode(codigoVerificador);
     const hash = await window.crypto.subtle.digest('SHA-256', dados);
-    return btoa(String.fromCharCode.apply(null, [...new Uint8Array(hash)]))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
+    return btoa(String.fromCharCode.apply(null, [...new Uint8Array(hash)])).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 async function fazerLoginSpotify() {
@@ -68,21 +64,15 @@ async function trocarCodigoPorToken() {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
-                client_id: CLIENT_ID,
-                grant_type: 'authorization_code',
-                code: codigo,
-                redirect_uri: REDIRECT_URI,
-                code_verifier: verificador
+                client_id: CLIENT_ID, grant_type: 'authorization_code', code: codigo, redirect_uri: REDIRECT_URI, code_verifier: verificador
             })
         });
 
         const dados = await resposta.json();
         
         if (dados.access_token) {
-            const tempoExpiracao = Date.now() + (dados.expires_in * 1000);
             window.localStorage.setItem('spotify_token', dados.access_token);
-            window.localStorage.setItem('spotify_token_exp', tempoExpiracao);
-
+            window.localStorage.setItem('spotify_token_exp', Date.now() + (dados.expires_in * 1000));
             window.history.replaceState({}, document.title, window.location.pathname);
             return dados.access_token;
         }
@@ -91,7 +81,7 @@ async function trocarCodigoPorToken() {
 }
 
 // ==========================================
-// 2. INICIALIZANDO O SPOTIFY VIRTUAL (PC E CELULAR)
+// 2. INICIALIZAÇÃO (SEM MOTOR INVISÍVEL)
 // ==========================================
 let tokenDeAcesso = null;
 let playlistReal = []; 
@@ -111,38 +101,12 @@ async function iniciarJogo() {
     if (!tokenDeAcesso) {
         msgArea.innerHTML = `<button onclick="fazerLoginSpotify()" style="background-color: #1DB954; color: #121212; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer;">🟢 Conectar com o Spotify</button>`;
     } else {
-        msgArea.innerText = "✅ Autenticado! Verificando dispositivo...";
-        
-        // Verifica se é celular
-        const ehCelular = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-        if (ehCelular) {
-            msgArea.innerText = "Procurando seu App do Spotify...";
-            buscarDispositivosAtivos();
-        } else {
-            const script = document.createElement("script");
-            script.src = "https://sdk.scdn.co/spotify-player.js";
-            document.body.appendChild(script);
-
-            window.onSpotifyWebPlaybackSDKReady = () => {
-                const playerSp = new Spotify.Player({
-                    name: 'Songless Premium',
-                    getOAuthToken: cb => { cb(tokenDeAcesso); },
-                    volume: 1.0 
-                });
-
-                playerSp.addListener('ready', ({ device_id }) => {
-                    console.log('Player Premium Conectado com Sucesso!');
-                    deviceId = device_id;
-                    carregarMusicas(); 
-                });
-
-                playerSp.connect();
-            };
-        }
+        msgArea.innerText = "✅ Autenticado! Procurando o seu app do Spotify...";
+        buscarDispositivosAtivos();
     }
 }
 
+// O Jogo agora procura o App que tá aberto no seu PC/Celular
 async function buscarDispositivosAtivos() {
     try {
         const resposta = await fetch('https://api.spotify.com/v1/me/player/devices', {
@@ -151,10 +115,13 @@ async function buscarDispositivosAtivos() {
         const dados = await resposta.json();
         
         if (dados.devices && dados.devices.length > 0) {
-            deviceId = dados.devices[0].id;
+            // Pega o dispositivo que estiver ativo, senão pega o primeiro da lista
+            let disp = dados.devices.find(d => d.is_active) || dados.devices[0];
+            deviceId = disp.id;
+            console.log("Conectado ao dispositivo:", disp.name);
             carregarMusicas();
         } else {
-            msgArea.innerHTML = `⚠️ Abra o app do Spotify, dê play e pause numa música, e depois <button onclick="buscarDispositivosAtivos()" style="background-color: #1DB954; color: #121212; border: none; padding: 5px 10px; border-radius: 10px; cursor: pointer;">Clique Aqui</button>`;
+            msgArea.innerHTML = `⚠️ Abra o app do Spotify, dê play e pause numa música, e <button onclick="buscarDispositivosAtivos()" style="background-color: #1DB954; color: #121212; border: none; padding: 5px 10px; border-radius: 10px; cursor: pointer;">Clique Aqui</button>`;
         }
     } catch (e) {
         msgArea.innerText = "Erro ao buscar dispositivos.";
@@ -162,83 +129,47 @@ async function buscarDispositivosAtivos() {
 }
 
 // ==========================================
-// 3. PUXANDO SUAS MÚSICAS (COM CACHE E BLINDAGEM 429)
-// ==========================================
-// ==========================================
-// 3. PUXANDO SUAS MÚSICAS (COM CONTADOR AO VIVO)
+// 3. CARREGAR MÚSICAS (TESTE TOP 50)
 // ==========================================
 async function carregarMusicas() {
-    const cacheKey = 'playlist_songless';
-    const cacheTimeKey = 'playlist_time_songless';
-    const sessentaMinutos = 60 * 60 * 1000; 
-    const cacheSalvo = localStorage.getItem(cacheKey);
-    const tempoCache = localStorage.getItem(cacheTimeKey);
-
-    // Se tiver cache, não precisa baixar de novo
-    if (cacheSalvo && tempoCache && (Date.now() - tempoCache < sessentaMinutos)) {
-        playlistReal = JSON.parse(cacheSalvo);
-        if (playlistReal.length > 0) {
-            sortearMusica();
-            msgArea.innerText = `🔥 Cache carregado: ${playlistReal.length} músicas! Aperte Play.`;
-            return;
-        }
-    }
-
     try {
-let url = 'https://api.spotify.com/v1/playlists/37i9dQZEVXbMXbN3EUUhlg/tracks?limit=50';
-        let limiteDePaginas = 40; 
-        let paginasBuscadas = 0;
+        // Usando a Playlist Top 50 Brasil para não dar erro 429!
+        let url = 'https://api.spotify.com/v1/playlists/37i9dQZEVXbMXbN3EUUhlg/tracks?limit=50';
         let musicasBrutas = [];
 
-        msgArea.innerText = "Lendo seu cofre Premium... (0 músicas)";
+        msgArea.innerText = "Baixando a Playlist de Teste...";
 
-        while (url && paginasBuscadas < limiteDePaginas) {
-            const resposta = await fetch(url, {
-                headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }
-            });
+        const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
+        const dados = await resposta.json();
+        
+        const todasAsMusicas = dados.items.map(item => item.track).filter(track => track !== null);
+        musicasBrutas = musicasBrutas.concat(todasAsMusicas);
             
-            // SE O SPOTIFY BLOQUEAR, AVISA NO CONSOLE E INTERROMPE O LOOP
-            if (resposta.status === 429) {
-                console.log(`Bloqueio 429 atingido na página ${paginasBuscadas + 1}!`);
-                break; 
-            }
-            
-            const dados = await resposta.json();
-            const todasAsMusicas = dados.items.map(item => item.track).filter(track => track !== null);
-            musicasBrutas = musicasBrutas.concat(todasAsMusicas);
-            
-            // 🔥 ATUALIZA A TELA EM TEMPO REAL
-            msgArea.innerText = `Baixando... ${musicasBrutas.length} músicas até agora!`;
-            
-            url = dados.next; 
-            paginasBuscadas++;
-            
-            // Pausa de 1 segundo para não irritar o Spotify
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-
-        // Limpa as duplicadas
         let mapaDeMusicas = new Map();
         musicasBrutas.forEach(m => mapaDeMusicas.set(m.id, m));
         playlistReal = Array.from(mapaDeMusicas.values());
 
-        // Resultado Final
         if (playlistReal.length > 0) {
-            localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
-            localStorage.setItem(cacheTimeKey, Date.now());
             sortearMusica();
-            msgArea.innerText = `🔥 O Spotify liberou ${playlistReal.length} músicas! Aperte Play.`;
-        } else {
-            msgArea.innerText = "Spotify não liberou nenhuma agora. Tente daqui a pouco.";
+            msgArea.innerText = `🔥 ${playlistReal.length} músicas carregadas! Aperte Play.`;
         }
     } catch (erro) {
-        console.error(erro);
-        msgArea.innerText = "Erro ao carregar músicas da sua conta.";
+        msgArea.innerText = "Erro ao carregar a playlist.";
     }
 }
 
+function sortearMusica() {
+    if (playlistReal.length > 0) {
+        let indiceSorteado = Math.floor(Math.random() * playlistReal.length);
+        musicaAtual = playlistReal[indiceSorteado];
+        console.log("🤫 A resposta correta é: ", musicaAtual.name); 
+    }
+}
+
+iniciarJogo();
+
 // ==========================================
-// 4. LÓGICA DO JOGO E MINI-PLAYER
+// 4. LÓGICA DO JOGO
 // ==========================================
 let tempos = [1, 2, 4, 7, 11, 16]; 
 let tentativaAtual = 0; 
@@ -291,8 +222,7 @@ function travarBotaoPlay(travar) {
 async function pausarMusica() {
     try {
         await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`, {
-            method: 'PUT',
-            headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }
+            method: 'PUT', headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }
         });
     } catch(e) {}
 }
@@ -342,14 +272,15 @@ async function proximaRodada() {
     inputChute.value = "";
     
     for(let i = 0; i <= 5; i++) {
-        document.getElementById('box-' + i).style.backgroundColor = '#535353';
+        let box = document.getElementById('box-' + i);
+        if (box) box.style.backgroundColor = '#535353';
     }
     
     msgArea.innerText = "Nova rodada! Aperte Play.";
     msgArea.style.color = "#b3b3b3";
 }
 
-btnNextRound.addEventListener('click', proximaRodada);
+if(btnNextRound) btnNextRound.addEventListener('click', proximaRodada);
 
 async function avancaTentativa(motivo) {
     if (jogoFinalizado) return;
@@ -384,142 +315,141 @@ async function avancaTentativa(motivo) {
     }
 }
 
-btnPlay.addEventListener('click', async () => {
-    if (!tokenDeAcesso || !deviceId) {
-        alert("Aguarde o Player se conectar!");
-        return;
-    }
-    if (playlistReal.length === 0 || jogoFinalizado) return;
-    if (btnPlay.disabled || tocando) return; 
-
-    let tempoLimite = tempos[tentativaAtual];
-    let tentativaAoDarPlay = tentativaAtual;
-    
-    tocando = true;
-    travarBotaoPlay(true); 
-    
-    document.getElementById('box-' + tentativaAtual).style.backgroundColor = '#1DB954';
-    tempoDisplay.innerText = tempoLimite + "s";
-    msgArea.innerText = "Tocando..."; 
-    msgArea.style.color = "#b3b3b3"; 
-
-    try {
-        await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': 'Bearer ' + tokenDeAcesso,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                uris: [musicaAtual.uri],
-                position_ms: 0 
-            })
-        });
-        
-        if (!tocando || tentativaAtual !== tentativaAoDarPlay) {
-            await pausarMusica();
-            travarBotaoPlay(false);
+if(btnPlay) {
+    btnPlay.addEventListener('click', async () => {
+        if (!tokenDeAcesso || !deviceId) {
+            alert("Não achamos seu App do Spotify. Abra ele e tente de novo!");
             return;
         }
+        if (playlistReal.length === 0 || jogoFinalizado) return;
+        if (btnPlay.disabled || tocando) return; 
+
+        let tempoLimite = tempos[tentativaAtual];
+        let tentativaAoDarPlay = tentativaAtual;
         
-        const LATENCIA_REDE = 450; 
-
-        cronometro = setTimeout(async () => {
-            await pausarMusica();
-            setTimeout(pausarMusica, 250); 
-
-            if (!jogoFinalizado) {
-                msgArea.innerText = "Tempo esgotado! Tente adivinhar ou pule.";
-            }
-            tocando = false; 
-            travarBotaoPlay(false); 
-        }, (tempoLimite * 1000) + LATENCIA_REDE);
-
-    } catch(erro) { 
-        console.error("Erro no play:", erro); 
-        tocando = false;
-        travarBotaoPlay(false); 
-    }
-});
-
-btnSkip.addEventListener('click', () => {
-    if (jogoFinalizado) return;
-    avancaTentativa("Você pulou.");
-});
-
-// ==========================================
-// 5. CAIXA DE PESQUISA E CONFETES
-// ==========================================
-inputChute.addEventListener('input', () => {
-    let digitado = inputChute.value.toLowerCase(); 
-    listaPesquisa.innerHTML = ''; 
-    
-    if (digitado.length === 0 || jogoFinalizado) {
-        listaPesquisa.style.display = 'none';
-        return;
-    }
-
-    let filtradas = playlistReal.filter(musica => 
-        musica.name.toLowerCase().includes(digitado) || 
-        musica.artists[0].name.toLowerCase().includes(digitado)
-    );
-
-    let musicasUnicas = [];
-    let idsVistos = new Set();
-    for (let m of filtradas) {
-        if (!idsVistos.has(m.id)) {
-            idsVistos.add(m.id);
-            musicasUnicas.push(m);
-        }
-    }
-
-    if (musicasUnicas.length > 0) {
-        listaPesquisa.style.display = 'block';
+        tocando = true;
+        travarBotaoPlay(true); 
         
-        musicasUnicas.slice(0, 15).forEach(musica => { 
-            let item = document.createElement('li');
-            item.innerHTML = `${musica.name} <span>${musica.artists[0].name}</span>`;
-            
-            item.addEventListener('click', async () => {
-                inputChute.value = musica.name; 
-                listaPesquisa.style.display = 'none'; 
-                
-                if(musica.id === musicaAtual.id) {
-                    if (tocando) {
-                        clearTimeout(cronometro);
-                        travarBotaoPlay(false);
-                    } else {
-                        try {
-                            await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-                                method: 'PUT',
-                                headers: { 'Authorization': 'Bearer ' + tokenDeAcesso, 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ uris: [musicaAtual.uri], position_ms: 0 })
-                            });
-                            tocando = true;
-                        } catch(e) {}
-                    }
-                    
-                    msgArea.innerText = "🎉 VOCÊ ACERTOU!!!";
-                    jogoFinalizado = true;
-                    
-                    atualizarStreak(true); 
-                    mostrarCapaDaMusica(true); 
+        let box = document.getElementById('box-' + tentativaAtual);
+        if(box) box.style.backgroundColor = '#1DB954';
+        
+        tempoDisplay.innerText = tempoLimite + "s";
+        msgArea.innerText = "Tocando..."; 
+        msgArea.style.color = "#b3b3b3"; 
 
-                    if (typeof confetti === "function") {
-                        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
-                    }
-
-                } else {
-                    avancaTentativa("Música errada!");
-                }
+        try {
+            await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + tokenDeAcesso, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uris: [musicaAtual.uri], position_ms: 0 })
             });
             
-            listaPesquisa.appendChild(item); 
-        });
-    } else {
-        listaPesquisa.style.display = 'none';
-    }
-});
+            if (!tocando || tentativaAtual !== tentativaAoDarPlay) {
+                await pausarMusica();
+                travarBotaoPlay(false);
+                return;
+            }
+            
+            cronometro = setTimeout(async () => {
+                await pausarMusica();
+                setTimeout(pausarMusica, 250); 
+                if (!jogoFinalizado) {
+                    msgArea.innerText = "Tempo esgotado! Tente adivinhar ou pule.";
+                }
+                tocando = false; 
+                travarBotaoPlay(false); 
+            }, (tempoLimite * 1000) + 450);
+
+        } catch(erro) { 
+            console.error("Erro no play:", erro); 
+            tocando = false;
+            travarBotaoPlay(false); 
+        }
+    });
+}
+
+if(btnSkip) {
+    btnSkip.addEventListener('click', () => {
+        if (jogoFinalizado) return;
+        avancaTentativa("Você pulou.");
+    });
+}
+
+// ==========================================
+// 5. CAIXA DE PESQUISA
+// ==========================================
+if(inputChute) {
+    inputChute.addEventListener('input', () => {
+        let digitado = inputChute.value.toLowerCase(); 
+        listaPesquisa.innerHTML = ''; 
+        
+        if (digitado.length === 0 || jogoFinalizado) {
+            listaPesquisa.style.display = 'none';
+            return;
+        }
+
+        let filtradas = playlistReal.filter(musica => 
+            musica.name.toLowerCase().includes(digitado) || 
+            musica.artists[0].name.toLowerCase().includes(digitado)
+        );
+
+        let musicasUnicas = [];
+        let idsVistos = new Set();
+        for (let m of filtradas) {
+            if (!idsVistos.has(m.id)) {
+                idsVistos.add(m.id);
+                musicasUnicas.push(m);
+            }
+        }
+
+        if (musicasUnicas.length > 0) {
+            listaPesquisa.style.display = 'block';
+            
+            musicasUnicas.slice(0, 15).forEach(musica => { 
+                let item = document.createElement('li');
+                item.innerHTML = `${musica.name} <span>${musica.artists[0].name}</span>`;
+                
+                item.addEventListener('click', async () => {
+                    inputChute.value = musica.name; 
+                    listaPesquisa.style.display = 'none'; 
+                    
+                    if(musica.id === musicaAtual.id) {
+                        if (tocando) {
+                            clearTimeout(cronometro);
+                            travarBotaoPlay(false);
+                        } else {
+                            try {
+                                await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+                                    method: 'PUT',
+                                    headers: { 'Authorization': 'Bearer ' + tokenDeAcesso, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ uris: [musicaAtual.uri], position_ms: 0 })
+                                });
+                                tocando = true;
+                            } catch(e) {}
+                        }
+                        
+                        msgArea.innerText = "🎉 VOCÊ ACERTOU!!!";
+                        jogoFinalizado = true;
+                        
+                        atualizarStreak(true); 
+                        mostrarCapaDaMusica(true); 
+
+                        if (typeof confetti === "function") {
+                            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 9999 });
+                        }
+
+                    } else {
+                        avancaTentativa("Música errada!");
+                    }
+                });
+                
+                listaPesquisa.appendChild(item); 
+            });
+        } else {
+            listaPesquisa.style.display = 'none';
+        }
+    });
+}
 
 // ==========================================
 // 6. FILTROS E DIFICULDADES
