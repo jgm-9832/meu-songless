@@ -1,272 +1,30 @@
-body {
-  background-color: #121212; 
-  color: white;
-  font-family: Arial, sans-serif;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
-}
-
-.container {
-  text-align: center;
-  background-color: #121212; 
-  padding: 20px;
-  width: 100%;
-  max-width: 500px;
-}
-
-h3 {
-  color: #1DB954;
-  letter-spacing: 5px;
-  margin-bottom: 5px;
-}
-
-.subtitle {
-  color: #b3b3b3;
-  font-size: 12px;
-  margin-bottom: 10px;
-}
-
-#streak-display {
-  color: #ff9800;
-  font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 25px;
-}
-
-/* Categorias e Dificuldades */
-.categories, .difficulties {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-}
-
-.cat-btn, .diff-btn {
-  background-color: #282828;
-  color: #b3b3b3;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 20px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.cat-btn.active {
-  background-color: #1DB954;
-  color: #121212;
-  font-weight: bold;
-}
-
-.diff-btn.impossible {
-  border: 1px solid #9c27b0; 
-  background-color: transparent;
-  color: #9c27b0;
-}
-
-/* Barrinha de Progresso */
-.progress {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 30px;
-  margin-top: 30px;
-  justify-content: center;
-}
-
-.box {
-  width: 16%;
-  height: 6px;
-  background-color: #535353;
-  border-radius: 2px;
-  transition: background-color 0.3s;
-}
-
-/* Área do Álbum na Vitória */
-#album-cover-area {
-  margin-bottom: 20px;
-  animation: fadeIn 0.5s ease; 
-}
-
-#album-cover {
-  width: 150px;
-  height: 150px;
-  border-radius: 10px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.6);
-}
-
-#musica-revelada {
-  font-weight: bold;
-  font-size: 16px;
-  margin-top: 10px;
-}
-
-/* 🌟 MINI-PLAYER DO MODO VIBE */
-.mini-player-controls {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  margin-top: 15px;
-  margin-bottom: 20px;
-}
-
-#vibe-play-pause-btn {
-  background-color: #282828;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: 0.2s;
-}
-
-#vibe-play-pause-btn:hover {
-  background-color: #3e3e3e;
-}
-
-#spotify-link-btn {
-  background-color: #1DB954;
-  color: #121212;
-  text-decoration: none;
-  font-weight: bold;
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  transition: 0.2s;
-}
-
-#spotify-link-btn:hover {
-  transform: scale(1.05);
-}
-
-/* O Botão da Próxima Rodada */
-#next-round-btn {
-  background-color: #1DB954;
-  color: #121212;
-  border: none;
-  padding: 10px 25px;
-  border-radius: 25px;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 15px;
-  transition: transform 0.2s;
-}
-
-#next-round-btn:hover {
-  transform: scale(1.05);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Botão Circular */
-.player-area {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-#play-btn {
-  background-color: #1DB954;
-  color: #121212;
-  border: none;
-  width: 120px;  
-  height: 120px; 
-  border-radius: 50%; 
-  font-size: 30px; 
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-#play-btn:hover {
-  transform: scale(1.05);
-}
-
-#tempo-display {
-  font-size: 24px;
-  color: #1DB954;
-  font-weight: bold;
-}
-
-#status-msg {
-  color: #b3b3b3;
-  font-size: 14px;
-  margin-bottom: 20px;
-  height: 20px;
-}
-
-/* Área de Pesquisa */
-.search-area {
-  position: relative; 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-}
-
-input {
-  padding: 12px;
-  width: 70%;
-  border-radius: 25px;
-  border: 1px solid #1DB954;
-  background-color: #121212;
-  color: white;
-  font-size: 14px;
-}
-
-#enviar-btn {
-  background-color: #282828;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 25px;
-  cursor: pointer;
-}
-
-/* Lista Suspensa */
-.dropdown-list {
-  list-style: none;
-  padding: 0;
-  margin: 5px 0 0 0;
-  width: 70%;
-  background-color: #282828;
-  border-radius: 8px;
-  position: absolute; 
-  top: 50px; 
-  max-height: 150px;
-  overflow-y: auto; 
-  text-align: left;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.8);
-  display: none; 
-  z-index: 10;
-}
-
-.dropdown-list li {
-  padding: 10px 15px;
-  border-bottom: 1px solid #181818;
-  color: white;
-  font-size: 14px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.dropdown-list li:hover {
-  background-color: #3e3e3e; 
-}
-
-.dropdown-list li span {
-  display: block;
-  color: #b3b3b3;
-  font-size: 11px;
-  margin-top: 3px;
-}
+body { background-color: #121212; color: white; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+.container { text-align: center; background-color: #121212; padding: 20px; width: 100%; max-width: 500px; }
+h3 { color: #1DB954; letter-spacing: 5px; margin-bottom: 5px; }
+.subtitle { color: #b3b3b3; font-size: 12px; margin-bottom: 10px; }
+#streak-display { color: #ff9800; font-weight: bold; font-size: 14px; margin-bottom: 25px; }
+.categories, .difficulties { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+.cat-btn, .diff-btn { background-color: #282828; color: #b3b3b3; border: none; padding: 10px 15px; border-radius: 20px; font-size: 13px; cursor: pointer; transition: 0.2s; }
+.cat-btn.active { background-color: #1DB954; color: #121212; font-weight: bold; }
+.diff-btn.impossible { border: 1px solid #9c27b0; background-color: transparent; color: #9c27b0; }
+.progress { display: flex; gap: 2px; margin-bottom: 30px; margin-top: 30px; justify-content: center; }
+.box { width: 16%; height: 6px; background-color: #535353; border-radius: 2px; transition: background-color 0.3s; }
+#album-cover-area { margin-bottom: 20px; animation: fadeIn 0.5s ease; }
+#album-cover { width: 150px; height: 150px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.6); }
+#musica-revelada { font-weight: bold; font-size: 16px; margin-top: 10px; }
+.mini-player-controls { display: flex; justify-content: center; gap: 15px; margin-top: 15px; margin-bottom: 20px; }
+#vibe-play-pause-btn { background-color: #282828; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 14px; }
+#spotify-link-btn { background-color: #1DB954; color: #121212; text-decoration: none; font-weight: bold; padding: 10px 20px; border-radius: 20px; font-size: 14px; display: flex; align-items: center; }
+#next-round-btn { background-color: #1DB954; color: #121212; border: none; padding: 10px 25px; border-radius: 25px; font-weight: bold; cursor: pointer; font-size: 15px; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.player-area { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 20px; }
+#play-btn { background-color: #1DB954; color: #121212; border: none; width: 120px; height: 120px; border-radius: 50%; font-size: 30px; cursor: pointer; }
+#tempo-display { font-size: 24px; color: #1DB954; font-weight: bold; }
+#status-msg { color: #b3b3b3; font-size: 14px; margin-bottom: 20px; height: 20px; }
+.search-area { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; }
+input { padding: 12px; width: 70%; border-radius: 25px; border: 1px solid #1DB954; background-color: #121212; color: white; font-size: 14px; }
+#enviar-btn { background-color: #282828; color: white; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; }
+.dropdown-list { list-style: none; padding: 0; margin: 5px 0 0 0; width: 70%; background-color: #282828; border-radius: 8px; position: absolute; top: 50px; max-height: 150px; overflow-y: auto; text-align: left; box-shadow: 0 4px 10px rgba(0,0,0,0.8); display: none; z-index: 10; }
+.dropdown-list li { padding: 10px 15px; border-bottom: 1px solid #181818; color: white; font-size: 14px; cursor: pointer; }
+.dropdown-list li:hover { background-color: #3e3e3e; }
+.dropdown-list li span { display: block; color: #b3b3b3; font-size: 11px; margin-top: 3px; }
