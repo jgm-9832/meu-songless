@@ -11,17 +11,14 @@
     <h3>S O N G L E S S</h3>
     <p class="subtitle">adivinhe a música da sua playlist</p>
     
-    <!-- Placar de Ofensiva -->
     <div id="streak-display">🔥 Sequência: 0</div>
 
-    <!-- Botões de Idioma / Categoria -->
     <div class="categories">
       <button class="cat-btn active">🇧🇷 Brasileiras</button>
       <button class="cat-btn">🌍 Gringas</button>
       <button class="cat-btn">🌐 Todas</button>
     </div>
 
-    <!-- Botões de Dificuldade -->
     <div class="difficulties">
       <button class="diff-btn">Easy</button>
       <button class="diff-btn">Medium</button>
@@ -30,7 +27,6 @@
       <button class="diff-btn impossible">Impossible</button>
     </div>
 
-    <!-- Barrinha de Progresso -->
     <div class="progress">
       <div class="box" id="box-0"></div>
       <div class="box" id="box-1"></div>
@@ -40,12 +36,10 @@
       <div class="box" id="box-5"></div>
     </div>
 
-    <!-- TELA DE VITÓRIA / DERROTA (Revelação do Álbum) -->
     <div id="album-cover-area" style="display: none;">
         <img id="album-cover" src="" alt="Capa do Álbum">
         <p id="musica-revelada"></p>
         
-        <!-- Mini-Player do Modo Vibe -->
         <div class="mini-player-controls">
            <button id="vibe-play-pause-btn">⏸️ Pausar</button>
            <a id="spotify-link-btn" href="#" target="_blank">🟢 Ver no Spotify</a>
@@ -54,16 +48,13 @@
         <button id="next-round-btn">Próxima Rodada ⏭</button>
     </div>
 
-    <!-- Botão Circular e Tempo -->
     <div class="player-area">
         <button id="play-btn">▶</button>
         <span id="tempo-display">1s</span>
     </div>
 
-    <!-- Área de Status -->
     <div id="status-msg">Pronto para jogar!</div>
 
-    <!-- Campo de Pesquisa -->
     <div class="search-area">
       <div style="display: flex; gap: 10px; width: 100%; justify-content: center;">
         <input type="text" id="chute" placeholder="🔍 Digite o nome da música..." autocomplete="off">
@@ -73,9 +64,7 @@
     </div>
   </div>
 
-  <!-- BIBLIOTECA MÁGICA DOS CONFETES -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <!-- SEU SCRIPT DE LÓGICA -->
   <script src="script.js"></script>
 </body>
 </html>
