@@ -91,6 +91,25 @@ let musicaAtual = null;
 let deviceId = null; 
 
 async function iniciarJogo() {
+    // ==========================================
+// 7. BLOQUEADOR DE SPOILER (MediaSession API)
+// ==========================================
+if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Songless',
+        artist: 'Adivinhe a música',
+        album: 'Modo Jogo',
+        artwork: [] // Deixamos vazio para não puxar a capa do álbum
+    });
+
+    // Ignora as ações de controle de mídia do sistema
+    navigator.mediaSession.setActionHandler('play', null);
+    navigator.mediaSession.setActionHandler('pause', null);
+    navigator.mediaSession.setActionHandler('seekbackward', null);
+    navigator.mediaSession.setActionHandler('seekforward', null);
+    navigator.mediaSession.setActionHandler('previoustrack', null);
+    navigator.mediaSession.setActionHandler('nexttrack', null);
+}
     const tokenSalvo = window.localStorage.getItem('spotify_token');
     const tokenExp = window.localStorage.getItem('spotify_token_exp');
 
