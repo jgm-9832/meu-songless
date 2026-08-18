@@ -164,6 +164,9 @@ async function buscarDispositivosAtivos() {
 // ==========================================
 // 3. PUXANDO SUAS MÚSICAS (COM CACHE E BLINDAGEM 429)
 // ==========================================
+// ==========================================
+// 3. PUXANDO SUAS MÚSICAS (COM CONTADOR AO VIVO)
+// ==========================================
 async function carregarMusicas() {
     const cacheKey = 'playlist_songless';
     const cacheTimeKey = 'playlist_time_songless';
@@ -171,66 +174,68 @@ async function carregarMusicas() {
     const cacheSalvo = localStorage.getItem(cacheKey);
     const tempoCache = localStorage.getItem(cacheTimeKey);
 
+    // Se tiver cache, não precisa baixar de novo
     if (cacheSalvo && tempoCache && (Date.now() - tempoCache < sessentaMinutos)) {
         playlistReal = JSON.parse(cacheSalvo);
         if (playlistReal.length > 0) {
             sortearMusica();
-            msgArea.innerText = `🔥 Playlist carregada! Aperte Play.`;
+            msgArea.innerText = `🔥 Cache carregado: ${playlistReal.length} músicas! Aperte Play.`;
             return;
         }
     }
 
     try {
-        msgArea.innerText = "Lendo seu cofre Premium... (Pode levar um tempinho)";
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
         let limiteDePaginas = 40; 
         let paginasBuscadas = 0;
         let musicasBrutas = [];
+
+        msgArea.innerText = "Lendo seu cofre Premium... (0 músicas)";
 
         while (url && paginasBuscadas < limiteDePaginas) {
             const resposta = await fetch(url, {
                 headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }
             });
             
-            // SE BATER NO LIMITE DO SPOTIFY, PARA E SALVA O QUE TEM
-            if (resposta.status === 429) break; 
+            // SE O SPOTIFY BLOQUEAR, AVISA NO CONSOLE E INTERROMPE O LOOP
+            if (resposta.status === 429) {
+                console.log(`Bloqueio 429 atingido na página ${paginasBuscadas + 1}!`);
+                break; 
+            }
             
             const dados = await resposta.json();
             const todasAsMusicas = dados.items.map(item => item.track).filter(track => track !== null);
             musicasBrutas = musicasBrutas.concat(todasAsMusicas);
             
+            // 🔥 ATUALIZA A TELA EM TEMPO REAL
+            msgArea.innerText = `Baixando... ${musicasBrutas.length} músicas até agora!`;
+            
             url = dados.next; 
             paginasBuscadas++;
+            
+            // Pausa de 1 segundo para não irritar o Spotify
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
+        // Limpa as duplicadas
         let mapaDeMusicas = new Map();
         musicasBrutas.forEach(m => mapaDeMusicas.set(m.id, m));
         playlistReal = Array.from(mapaDeMusicas.values());
 
+        // Resultado Final
         if (playlistReal.length > 0) {
             localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
             localStorage.setItem(cacheTimeKey, Date.now());
             sortearMusica();
-            msgArea.innerText = `🔥 ${playlistReal.length} músicas carregadas! Aperte Play.`;
+            msgArea.innerText = `🔥 O Spotify liberou ${playlistReal.length} músicas! Aperte Play.`;
         } else {
-            msgArea.innerText = "Spotify bloqueado. Tente daqui a pouco.";
+            msgArea.innerText = "Spotify não liberou nenhuma agora. Tente daqui a pouco.";
         }
     } catch (erro) {
         console.error(erro);
         msgArea.innerText = "Erro ao carregar músicas da sua conta.";
     }
 }
-
-function sortearMusica() {
-    if (playlistReal.length > 0) {
-        let indiceSorteado = Math.floor(Math.random() * playlistReal.length);
-        musicaAtual = playlistReal[indiceSorteado];
-        console.log("🤫 A resposta correta é: ", musicaAtual.name); 
-    }
-}
-
-iniciarJogo();
 
 // ==========================================
 // 4. LÓGICA DO JOGO E MINI-PLAYER
