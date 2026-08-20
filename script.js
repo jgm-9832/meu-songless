@@ -147,7 +147,7 @@ async function carregarMusicas() {
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
         let musicasBrutas = [];
         let paginas = 0;
-        let maximoDePaginas = 20; // 20 páginas x 50 músicas = 1000 músicas máximo
+        let maximoDePaginas = 40; // 20 páginas x 50 músicas = 1000 músicas máximo
 
         msgArea.innerText = "Baixando sua biblioteca completa...";
 
@@ -190,6 +190,19 @@ async function carregarMusicas() {
     } catch (erro) {
         console.error(erro);
         msgArea.innerText = "Erro ao buscar biblioteca.";
+        // ==========================================
+// FUNÇÃO DE SORTEIO (Que tinha sumido!)
+// ==========================================
+function sortearMusica() {
+    if (playlistReal.length > 0) {
+        let indiceSorteado = Math.floor(Math.random() * playlistReal.length);
+        musicaAtual = playlistReal[indiceSorteado];
+        console.log("🤫 A resposta correta é: ", musicaAtual.name); 
+    }
+}
+
+// Inicia o jogo depois que tudo está configurado
+iniciarJogo();
     }
 }
 iniciarJogo();
