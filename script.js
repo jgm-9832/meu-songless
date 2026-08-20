@@ -129,43 +129,69 @@ async function buscarDispositivosAtivos() {
 }
 
 // ==========================================
-// 3. CARREGAR MÚSICAS (TESTE TOP 50)
+// 3. CARREGAR MÚSICAS de 50 em 50
 // ==========================================
 async function carregarMusicas() {
+    // Tenta carregar do Cache primeiro
+    const cacheKey = 'playlist_songless';
+    const cacheSalvo = localStorage.getItem(cacheKey);
+    if (cacheSalvo) {
+        playlistReal = JSON.parse(cacheSalvo);
+        sortearMusica();
+        msgArea.innerText = `🔥 ${playlistReal.length} músicas carregadas do cache!`;
+        return;
+    }
+
     try {
-        // Usando a Playlist Top 50 Brasil para não dar erro 429!
+        // Começamos na primeira página
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
         let musicasBrutas = [];
+        let paginas = 0;
+        let maximoDePaginas = 20; // 20 páginas x 50 músicas = 1000 músicas máximo
 
-        msgArea.innerText = "Baixando a Playlist de Teste...";
+        msgArea.innerText = "Baixando sua biblioteca completa...";
 
-        const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
-        const dados = await resposta.json();
-        
-        const todasAsMusicas = dados.items.map(item => item.track).filter(track => track !== null);
-        musicasBrutas = musicasBrutas.concat(todasAsMusicas);
+        while (url && paginas < maximoDePaginas) {
+            const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
             
+            // Se o Spotify der "calma aí" (429), paramos e usamos o que já temos
+            if (resposta.status === 429) {
+                console.log("Limite atingido, parando a busca...");
+                break; 
+            }
+            
+            const dados = await resposta.json();
+            
+            // Adiciona as músicas do pacote atual
+            const novasMusicas = dados.items.map(item => item.track).filter(t => t !== null);
+            musicasBrutas = musicasBrutas.concat(novasMusicas);
+            
+            // A mágica: pegamos o link da próxima página
+            url = dados.next; 
+            paginas++;
+            
+            // Mostra o progresso
+            msgArea.innerText = `Baixando... (${musicasBrutas.length} músicas encontradas)`;
+            
+            // Pequena pausa de 200ms para não levar bloqueio
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        // Remove duplicadas, se houver
         let mapaDeMusicas = new Map();
         musicasBrutas.forEach(m => mapaDeMusicas.set(m.id, m));
         playlistReal = Array.from(mapaDeMusicas.values());
 
         if (playlistReal.length > 0) {
+            localStorage.setItem(cacheKey, JSON.stringify(playlistReal));
             sortearMusica();
-            msgArea.innerText = `🔥 ${playlistReal.length} músicas carregadas! Aperte Play.`;
+            msgArea.innerText = `🔥 Pronto! ${playlistReal.length} músicas na sua biblioteca!`;
         }
     } catch (erro) {
-        msgArea.innerText = "Erro ao carregar a playlist.";
+        console.error(erro);
+        msgArea.innerText = "Erro ao buscar biblioteca.";
     }
 }
-
-function sortearMusica() {
-    if (playlistReal.length > 0) {
-        let indiceSorteado = Math.floor(Math.random() * playlistReal.length);
-        musicaAtual = playlistReal[indiceSorteado];
-        console.log("🤫 A resposta correta é: ", musicaAtual.name); 
-    }
-}
-
 iniciarJogo();
 
 // ==========================================
