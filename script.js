@@ -143,41 +143,32 @@ async function carregarMusicas() {
     }
 
     try {
-        // Começamos na primeira página
         let url = 'https://api.spotify.com/v1/me/tracks?limit=50';
         let musicasBrutas = [];
         let paginas = 0;
-        let maximoDePaginas = 40; // 20 páginas x 50 músicas = 1000 músicas máximo
+        let maximoDePaginas = 40; 
 
         msgArea.innerText = "Baixando sua biblioteca completa...";
 
         while (url && paginas < maximoDePaginas) {
             const resposta = await fetch(url, { headers: { 'Authorization': 'Bearer ' + tokenDeAcesso }});
             
-            // Se o Spotify der "calma aí" (429), paramos e usamos o que já temos
             if (resposta.status === 429) {
                 console.log("Limite atingido, parando a busca...");
                 break; 
             }
             
             const dados = await resposta.json();
-            
-            // Adiciona as músicas do pacote atual
             const novasMusicas = dados.items.map(item => item.track).filter(t => t !== null);
             musicasBrutas = musicasBrutas.concat(novasMusicas);
             
-            // A mágica: pegamos o link da próxima página
             url = dados.next; 
             paginas++;
             
-            // Mostra o progresso
             msgArea.innerText = `Baixando... (${musicasBrutas.length} músicas encontradas)`;
-            
-            // Pequena pausa de 200ms para não levar bloqueio
             await new Promise(resolve => setTimeout(resolve, 200));
         }
 
-        // Remove duplicadas, se houver
         let mapaDeMusicas = new Map();
         musicasBrutas.forEach(m => mapaDeMusicas.set(m.id, m));
         playlistReal = Array.from(mapaDeMusicas.values());
@@ -190,8 +181,11 @@ async function carregarMusicas() {
     } catch (erro) {
         console.error(erro);
         msgArea.innerText = "Erro ao buscar biblioteca.";
-        // ==========================================
-// FUNÇÃO DE SORTEIO (Que tinha sumido!)
+    }
+}
+
+// ==========================================
+// FUNÇÃO DE SORTEIO E INÍCIO DO JOGO
 // ==========================================
 function sortearMusica() {
     if (playlistReal.length > 0) {
@@ -201,10 +195,7 @@ function sortearMusica() {
     }
 }
 
-// Inicia o jogo depois que tudo está configurado
-iniciarJogo();
-    }
-}
+// Aqui ligamos o jogo (uma vez só!)
 iniciarJogo();
 
 // ==========================================
