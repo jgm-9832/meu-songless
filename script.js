@@ -1,9 +1,9 @@
 // ==========================================
 // 0. LIMPEZA DE CACHE
 // ==========================================
-if (!localStorage.getItem('cache_limpo_v4')) {
+if (!localStorage.getItem('cache_limpo_v5')) {
     localStorage.clear();
-    localStorage.setItem('cache_limpo_v4', 'true');
+    localStorage.setItem('cache_limpo_v5', 'true');
 }
 
 const btnPlay = document.getElementById('play-btn');
@@ -185,13 +185,29 @@ async function carregarMusicas() {
 }
 
 // ==========================================
-// FUNÇÃO DE SORTEIO E INÍCIO DO JOGO
+// FUNÇÃO DE SORTEIO INTELIGENTE (COM FILTRO)
 // ==========================================
+let filtroAtual = 'Todas'; // Guarda a categoria escolhida
+
 function sortearMusica() {
     if (playlistReal.length > 0) {
-        let indiceSorteado = Math.floor(Math.random() * playlistReal.length);
-        musicaAtual = playlistReal[indiceSorteado];
-        console.log("🤫 A resposta correta é: ", musicaAtual.name); 
+        let listaFiltrada = playlistReal;
+
+        // O Truque do ISRC (O CPF da música)
+        if (filtroAtual === 'Brasileiras') {
+            // Filtra só as que o código começa com BR
+            listaFiltrada = playlistReal.filter(m => m.external_ids && m.external_ids.isrc && m.external_ids.isrc.startsWith('BR'));
+        } else if (filtroAtual === 'Gringas') {
+            // Filtra as que NÃO começam com BR
+            listaFiltrada = playlistReal.filter(m => !m.external_ids || !m.external_ids.isrc || !m.external_ids.isrc.startsWith('BR'));
+        }
+
+        // Prevenção de erro: Se o filtro der vazio, usa a lista toda para não quebrar
+        if (listaFiltrada.length === 0) listaFiltrada = playlistReal;
+
+        let indiceSorteado = Math.floor(Math.random() * listaFiltrada.length);
+        musicaAtual = listaFiltrada[indiceSorteado];
+        console.log(`🤫 Sorteada [${filtroAtual}]: `, musicaAtual.name); 
     }
 }
 
@@ -482,16 +498,54 @@ if(inputChute) {
 }
 
 // ==========================================
-// 6. FILTROS E DIFICULDADES
+// 6. FILTROS E DIFICULDADES (INTELIGENTES!)
 // ==========================================
 const botoesCategoria = document.querySelectorAll('.cat-btn');
 const botoesDificuldade = document.querySelectorAll('.diff-btn');
 
 botoesCategoria.forEach(botao => {
-    botao.addEventListener('click', () => {
+    botao.addEventListener('click', async () => {
+        // Muda o visual do botão
         botoesCategoria.forEach(b => b.classList.remove('active'));
         botao.classList.add('active');
-        msgArea.innerText = `Filtro alterado para: ${botao.innerText}`;
+
+        // Atualiza a variável do filtro baseada no texto do botão
+        if (botao.innerText.includes('Brasileiras')) filtroAtual = 'Brasileiras';
+        else if (botao.innerText.includes('Gringas')) filtroAtual = 'Gringas';
+        else filtroAtual = 'Todas';
+
+        msgArea.innerText = `Filtro alterado para: ${filtroAtual}. Sorteando nova música...`;
+        
+        // Pausa a música atual e sorteia uma nova na categoria certa automaticamente
+        if (tocando) {
+            clearTimeout(cronometro);
+            await pausarMusica();
+            tocando = false;
+            travarBotaoPlay(false);
+        }
+        
+        sortearMusica();
+        tentativaAtual = 0;
+        jogoFinalizado = false;
+        if(inputChute) inputChute.value = "";
+        if(tempoDisplay) tempoDisplay.innerText = tempos[0] + "s";
+        
+        // Reseta os quadradinhos e a capa
+        const albumArea = document.getElementById('album-cover-area');
+        const playerArea = document.querySelector('.player-area');
+        const searchArea = document.querySelector('.search-area');
+        
+        if(albumArea) albumArea.style.display = 'none';
+        if(playerArea) playerArea.style.display = 'flex';
+        if(searchArea) searchArea.style.display = 'flex';
+        
+        for(let i = 0; i <= 5; i++) {
+            let box = document.getElementById('box-' + i);
+            if (box) box.style.backgroundColor = '#535353';
+        }
+        
+        msgArea.innerText = `Filtro ${filtroAtual} ativado! Aperte Play.`;
+        msgArea.style.color = "#b3b3b3";
     });
 });
 
